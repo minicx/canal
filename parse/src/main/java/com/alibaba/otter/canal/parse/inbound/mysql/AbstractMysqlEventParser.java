@@ -61,6 +61,8 @@ public abstract class AbstractMysqlEventParser extends AbstractEventParser {
         convert.setFilterRows(filterRows);
         convert.setFilterTableError(filterTableError);
         convert.setUseDruidDdlFilter(useDruidDdlFilter);
+        convert.setFieldThresholdValue(fieldThresholdValue);
+        convert.setHookUrl(hookUrl);
         return convert;
     }
 

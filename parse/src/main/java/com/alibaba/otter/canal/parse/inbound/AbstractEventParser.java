@@ -59,6 +59,10 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
     protected String		  			  			fieldFilter;
     protected Map<String, List<String>> 			fieldFilterMap;
     protected String		  			  			fieldBlackFilter;
+    // 字段长度限定
+    protected Long		  			  			fieldThresholdValue;
+    // 发送告警的
+    protected String		  			  			hookUrl;
     protected Map<String, List<String>> 			fieldBlackFilterMap;
     
     private CanalAlarmHandler                        alarmHandler               = null;
@@ -706,7 +710,23 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
 		this.fieldBlackFilterMap = parseFieldFilterMap(fieldBlackFilter);
 	}
 
-	/**
+    public Long getFieldThresholdValue() {
+        return fieldThresholdValue;
+    }
+
+    public void setFieldThresholdValue(Long fieldThresholdValue) {
+        this.fieldThresholdValue = fieldThresholdValue;
+    }
+
+    public String getHookUrl() {
+        return hookUrl;
+    }
+
+    public void setHookUrl(String hookUrl) {
+        this.hookUrl = hookUrl;
+    }
+
+    /**
 	 * 获取表字段过滤规则
 	 * @return
 	 * 	key:	schema.tableName

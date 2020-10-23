@@ -1,17 +1,15 @@
 package com.alibaba.otter.canal.parse.inbound.mysql.dbsync;
 
-import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import com.alibaba.otter.canal.common.utils.JsonUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -90,6 +88,10 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
     private volatile AviaterRegexFilter nameBlackFilter;
     private Map<String, List<String>> 	fieldFilterMap 		= new HashMap<String, List<String>>();
     private Map<String, List<String>> 	fieldBlackFilterMap = new HashMap<String, List<String>>();
+    // 字段长度限定
+    protected Long		  			  			fieldThresholdValue;
+    // 发送告警的
+    protected String		  			  			hookUrl;
 
     private TableMetaCache              tableMetaCache;
     private Charset                     charset             = Charset.defaultCharset();
@@ -662,7 +664,12 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
                 columnBuilder.setValue(value.toString());
                 columnBuilder.setSqlType(Types.BIGINT);
                 columnBuilder.setUpdated(false);
-
+                // 超过阈值发送报警
+                if (columnBuilder.getValue().length() >= fieldThresholdValue) {
+                    logger.info("Large fields appear : " + columnBuilder.getValue());
+                    sendDingDingMsg(rowDataBuilder.toString(), (Objects.nonNull(tableMeta) ? tableMeta.toString() : " "));
+                    continue;
+                }
                 if (needField(fieldList, blackFieldList, columnBuilder.getName())) {
                 	if (isAfter) {
                         rowDataBuilder.addAfterColumns(columnBuilder.build());
@@ -835,6 +842,12 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
                                      && isUpdate(rowDataBuilder.getBeforeColumnsList(),
                                          columnBuilder.getIsNull() ? null : columnBuilder.getValue(),
                                          i));
+            // 超过阈值发送报警
+            if (columnBuilder.getValue().length() >= fieldThresholdValue) {
+                logger.info("Large fields appear : " + columnBuilder.getValue());
+                sendDingDingMsg(rowDataBuilder.toString(), (Objects.nonNull(tableMeta) ? tableMeta.toString() : " "));
+                continue;
+            }
             if (needField(fieldList, blackFieldList, columnBuilder.getName())) {
             	if (isAfter) {
                     rowDataBuilder.addAfterColumns(columnBuilder.build());
@@ -1079,5 +1092,73 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
 
     public void setUseDruidDdlFilter(boolean useDruidDdlFilter) {
         this.useDruidDdlFilter = useDruidDdlFilter;
+    }
+
+    public Long getFieldThresholdValue() {
+        return fieldThresholdValue;
+    }
+
+    public void setFieldThresholdValue(Long fieldThresholdValue) {
+        this.fieldThresholdValue = fieldThresholdValue;
+    }
+
+    public String getHookUrl() {
+        return hookUrl;
+    }
+
+    public void setHookUrl(String hookUrl) {
+        this.hookUrl = hookUrl;
+    }
+
+    /**
+     * 向指定 钉钉 发送报警
+     *
+     * @param rowData
+     *            请求参数
+     * @return 所代表远程资源的响应结果
+     */
+    private String sendDingDingMsg(String rowData, String table) {
+
+
+        PrintWriter out = null;
+        BufferedReader in = null;
+        String result = "";
+        try {
+            URL realUrl = new URL(hookUrl);
+            URLConnection conn = realUrl.openConnection();
+            conn.setRequestProperty("accept", "*/*");
+            conn.setRequestProperty("connection", "Keep-Alive");
+            conn.setRequestProperty("Content-Type",
+                    "application/json");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            out = new PrintWriter(conn.getOutputStream());
+            String paramD = "{\"msgtype\": \"text\",\"text\": {\"content\":\"####canal同步异常，出现超大数据!  tableMeta : \\"+ JsonUtils.marshalToString("rowData : " +rowData + " table : " + table).replace("\\n","")+"}}";
+            out.print(paramD);
+            out.flush();
+            in = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream()));
+            String line;
+            while ((line = in.readLine()) != null) {
+                result += line;
+            }
+        } catch (Exception e) {
+            System.out.println("发送 POST 请求出现异常！"+e);
+            e.printStackTrace();
+        }
+        finally{
+            try{
+                if(out!=null){
+                    out.close();
+                }
+                if(in!=null){
+                    in.close();
+                }
+            }
+            catch(IOException ex){
+                ex.printStackTrace();
+            }
+        }
+        return result;
     }
 }
