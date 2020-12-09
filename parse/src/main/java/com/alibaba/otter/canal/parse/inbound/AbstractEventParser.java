@@ -60,7 +60,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
     protected Map<String, List<String>> 			fieldFilterMap;
     protected String		  			  			fieldBlackFilter;
     // 字段长度限定
-    protected Long		  			  			fieldThresholdValue;
+    protected Long		  			  			fieldThresholdValue = Long.MAX_VALUE;
     // 发送告警的
     protected String		  			  			hookUrl;
     protected Map<String, List<String>> 			fieldBlackFilterMap;

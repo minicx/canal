@@ -8,6 +8,7 @@
 ## 使用
 #### 在canal目录下 mvn clean install
 #### 打包后替换官方下载的canal/lib中的canal.deployer-1.1.4.jar和canal.parse-1.1.4.jar
-#### canal/conf/canal/properties 中添加
+#### canal/conf/canal/instance/properties 中添加
     canal.instance.threshold.value.field=4000000
     canal.instance.threshold.hook.url=你的钉钉机器人url
+#### 替换/canal/conf/spring下的配置文件

@@ -82,14 +82,14 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
     public static final int             version             = 1;
     public static final String          BEGIN               = "BEGIN";
     public static final String          COMMIT              = "COMMIT";
-    public static final Logger          logger              = LoggerFactory.getLogger(LogEventConvert.class);
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     private volatile AviaterRegexFilter nameFilter;                                                          // 运行时引用可能会有变化，比如规则发生变化时
     private volatile AviaterRegexFilter nameBlackFilter;
     private Map<String, List<String>> 	fieldFilterMap 		= new HashMap<String, List<String>>();
     private Map<String, List<String>> 	fieldBlackFilterMap = new HashMap<String, List<String>>();
     // 字段长度限定
-    protected Long		  			  			fieldThresholdValue;
+    protected Long		  			  			fieldThresholdValue = Long.MAX_VALUE;
     // 发送告警的
     protected String		  			  			hookUrl;
 
@@ -666,7 +666,7 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
                 columnBuilder.setUpdated(false);
                 // 超过阈值发送报警
                 if (columnBuilder.getValue().length() >= fieldThresholdValue) {
-                    logger.info("Large fields appear : " + columnBuilder.getValue());
+                    logger.warn("Large fields appear : " + columnBuilder.getValue());
                     sendDingDingMsg(rowDataBuilder.toString(), (Objects.nonNull(tableMeta) ? tableMeta.toString() : " "));
                     continue;
                 }
@@ -829,9 +829,19 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
                         break;
                     case Types.CHAR:
                     case Types.VARCHAR:
+                        if (value.toString().length() >= this.fieldThresholdValue.longValue()) {
+                            logger.warn("Large fields appear : " + value);
+                            sendDingDingMsg(rowDataBuilder.toString(), Objects.nonNull(tableMeta) ? tableMeta.toString() : " ");
+                            break;
+                        }
                         columnBuilder.setValue(value.toString());
                         break;
                     default:
+                        if (value.toString().length() >= this.fieldThresholdValue.longValue()) {
+                            logger.warn("Large fields appear : " + value);
+                            sendDingDingMsg(rowDataBuilder.toString(), Objects.nonNull(tableMeta) ? tableMeta.toString() : " ");
+                            break;
+                        }
                         columnBuilder.setValue(value.toString());
                 }
             }
@@ -844,7 +854,7 @@ public class LogEventConvert extends AbstractCanalLifeCycle implements BinlogPar
                                          i));
             // 超过阈值发送报警
             if (columnBuilder.getValue().length() >= fieldThresholdValue) {
-                logger.info("Large fields appear : " + columnBuilder.getValue());
+                logger.warn("Large fields appear : " + columnBuilder.getValue());
                 sendDingDingMsg(rowDataBuilder.toString(), (Objects.nonNull(tableMeta) ? tableMeta.toString() : " "));
                 continue;
             }
